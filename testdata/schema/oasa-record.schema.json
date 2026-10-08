@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oasa.invalid/schema/0.1/oasa-record.schema.json",
+  "$id": "https://oasaspec.org/schema/0.1/oasa-record.schema.json",
   "title": "OASA record (schema_version 0.1.x)",
   "description": "One Open Agent Spend Attribution record. Envelope fields are required; every other group is optional. Generated from SPEC.md by scripts/generate-schema.mjs; do not edit by hand.",
   "type": "object",

@@ -8,6 +8,7 @@ Security fixes are made on the latest minor release. Before `v1.0.0`, that is th
 
 Please do not open a public issue.
 
+<!-- When OASA moves to its own domain, the email contact below becomes security@oasaspec.org. -->
 Report privately through GitHub: on this repository, open the **Security** tab and choose **Report a vulnerability**. If you can't use GitHub, email **hello@onaro.io** with "Security" in the subject.
 
 Include the affected version, a description of the issue, and steps to reproduce if you have them. We aim to acknowledge reports within three business days and to agree a disclosure date with you once a fix is ready.
