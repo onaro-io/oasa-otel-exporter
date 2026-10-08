@@ -1,0 +1,38 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          { "key": "service.name", "value": { "stringValue": "support-agent-svc" } },
+          { "key": "deployment.environment.name", "value": { "stringValue": "prod" } },
+          { "key": "cost.center", "value": { "stringValue": "CustomerSuccess" } },
+          { "key": "team", "value": { "stringValue": "support" } }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": { "name": "opentelemetry.instrumentation.botocore" },
+          "spans": [
+            {
+              "traceId": "0af7651916cd43dd8448eb211c80319c",
+              "spanId": "b9c7c989f97918e1",
+              "name": "chat arn:aws:bedrock:us-east-1:111122223333:application-inference-profile/support-agent",
+              "kind": 3,
+              "startTimeUnixNano": "1788271209500000000",
+              "endTimeUnixNano": "1788271212000000000",
+              "attributes": [
+                { "key": "gen_ai.provider.name", "value": { "stringValue": "aws.bedrock" } },
+                { "key": "gen_ai.operation.name", "value": { "stringValue": "chat" } },
+                { "key": "gen_ai.request.model", "value": { "stringValue": "arn:aws:bedrock:us-east-1:111122223333:application-inference-profile/support-agent" } },
+                { "key": "gen_ai.usage.input_tokens", "value": { "intValue": "4000" } },
+                { "key": "gen_ai.usage.output_tokens", "value": { "intValue": "900" } },
+                { "key": "gen_ai.agent.id", "value": { "stringValue": "support-agent" } },
+                { "key": "gen_ai.agent.name", "value": { "stringValue": "Support Agent" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

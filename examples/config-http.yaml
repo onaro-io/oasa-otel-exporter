@@ -1,0 +1,37 @@
+# Collector config for the http sink: POST OASA batches to an ingest endpoint
+# with a bearer token. Set OASA_ENDPOINT and OASA_TOKEN in the environment.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+      grpc:
+        endpoint: 127.0.0.1:4317
+
+exporters:
+  oasa:
+    sink: http
+    http:
+      endpoint: ${env:OASA_ENDPOINT}
+      token: ${env:OASA_TOKEN}
+      max_batch_size: 1000
+      timeout: 30s
+    attribution:
+      cost_center: resource.attributes["cost.center"]
+      project_id: resource.attributes["project.id"]
+      customer_id: span.attributes["app.customer.id"]
+      tags_from: ["team", "owner"]
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [oasa]

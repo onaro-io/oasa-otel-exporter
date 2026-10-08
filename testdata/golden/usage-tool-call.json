@@ -1,0 +1,21 @@
+{
+  "record_id": "01a05d7f-aab8-7ef7-ad2e-7ed5b28a7414",
+  "record_type": "usage",
+  "schema_version": "0.1",
+  "occurred_at": "2026-09-01T15:04:03Z",
+  "recorded_at": "2026-09-01T15:04:06Z",
+  "source_system": "otel-collector",
+  "source_record_id": "4bf92f3577b34da6a3ce929d0e0e4736/b7ad6b7169203331",
+  "currency": "USD",
+  "agent_id": "agent-support-47",
+  "agent_name": "Support Triage",
+  "session_id": "sess-2f91",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "b7ad6b7169203331",
+  "operation": "tool_call",
+  "tool_name": "crm.lookup",
+  "request_count": 1,
+  "cost_center": "Customer Success",
+  "project_id": "proj_support",
+  "environment": "prod"
+}

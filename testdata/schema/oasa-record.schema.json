@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oasa.invalid/schema/0.1/oasa-record.schema.json",
+  "title": "OASA record (schema_version 0.1.x)",
+  "description": "One Open Agent Spend Attribution record. Envelope fields are required; every other group is optional. Generated from SPEC.md by scripts/generate-schema.mjs; do not edit by hand.",
+  "type": "object",
+  "required": [
+    "record_id",
+    "record_type",
+    "schema_version",
+    "occurred_at",
+    "recorded_at",
+    "source_system",
+    "source_record_id",
+    "currency"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "record_id": {
+      "description": "Globally unique record identifier. Adapters with a stable source key SHOULD derive it deterministically (see Deterministic record IDs) so that a retried export produces the same ID.",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+      "minLength": 1
+    },
+    "record_type": {
+      "description": "One row = one event class.",
+      "type": "string",
+      "enum": [
+        "usage",
+        "charge",
+        "settlement",
+        "allocation",
+        "outcome"
+      ]
+    },
+    "schema_version": {
+      "description": "Schema version string; \"0.1\" for this draft.",
+      "type": "string",
+      "pattern": "^0\\.1(\\.[0-9]+)?$",
+      "minLength": 1
+    },
+    "occurred_at": {
+      "description": "When the event happened.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-]00:00)$",
+      "minLength": 1
+    },
+    "recorded_at": {
+      "description": "When the record was ingested.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-]00:00)$",
+      "minLength": 1
+    },
+    "source_system": {
+      "description": "e.g. otel-collector, openai-billing, x402-facilitator.",
+      "type": "string",
+      "minLength": 1
+    },
+    "source_record_id": {
+      "description": "Key in the source system.",
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "description": "ISO 4217, or CAIP-19 asset ID for on-chain assets.",
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_id": {
+      "description": "Stable internal agent ID.",
+      "type": "string"
+    },
+    "agent_name": {
+      "description": "Human-readable agent name.",
+      "type": "string"
+    },
+    "agent_version": {
+      "description": "Agent build or prompt version.",
+      "type": "string"
+    },
+    "agent_owner": {
+      "description": "Team or principal accountable.",
+      "type": "string"
+    },
+    "parent_agent_id": {
+      "description": "Parent in a sub-agent chain.",
+      "type": "string"
+    },
+    "agent_framework": {
+      "description": "e.g. langgraph, crewai, custom.",
+      "type": "string"
+    },
+    "identity_scheme": {
+      "description": "How external identity is named.",
+      "type": "string",
+      "enum": [
+        "internal",
+        "erc8004",
+        "other"
+      ]
+    },
+    "external_identity_ref": {
+      "description": "e.g. ERC-8004 registration reference.",
+      "type": "string"
+    },
+    "session_id": {
+      "description": "Runtime session identifier.",
+      "type": "string"
+    },
+    "trace_id": {
+      "description": "W3C Trace Context / OpenTelemetry trace id.",
+      "type": "string"
+    },
+    "span_id": {
+      "description": "Span id within the trace.",
+      "type": "string"
+    },
+    "task_id": {
+      "description": "Org-defined task identifier.",
+      "type": "string"
+    },
+    "task_type": {
+      "description": "Free taxonomy; org-defined.",
+      "type": "string"
+    },
+    "workflow_id": {
+      "description": "Workflow or pipeline id.",
+      "type": "string"
+    },
+    "trigger": {
+      "description": "What started the run.",
+      "type": "string",
+      "enum": [
+        "human",
+        "scheduled",
+        "agent",
+        "event"
+      ]
+    },
+    "initiating_principal": {
+      "description": "Human or agent that authorized the run.",
+      "type": "string"
+    },
+    "provider": {
+      "description": "Model or API provider.",
+      "type": "string"
+    },
+    "service": {
+      "description": "Service product name.",
+      "type": "string"
+    },
+    "model": {
+      "description": "Model identifier.",
+      "type": "string"
+    },
+    "operation": {
+      "description": "Operation class.",
+      "type": "string",
+      "enum": [
+        "chat",
+        "completion",
+        "embeddings",
+        "tool_call",
+        "inference",
+        "storage",
+        "api_call",
+        "other"
+      ]
+    },
+    "input_tokens": {
+      "description": "Input token count.",
+      "type": "integer"
+    },
+    "output_tokens": {
+      "description": "Output token count.",
+      "type": "integer"
+    },
+    "cached_tokens": {
+      "description": "Cached / reused tokens when reported.",
+      "type": "integer"
+    },
+    "reasoning_tokens": {
+      "description": "Reasoning tokens when reported.",
+      "type": "integer"
+    },
+    "unit_type": {
+      "description": "Unit of consumption.",
+      "type": "string",
+      "enum": [
+        "tokens",
+        "requests",
+        "seconds",
+        "gb",
+        "custom"
+      ]
+    },
+    "units_consumed": {
+      "description": "Quantity in unit_type. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "tool_name": {
+      "description": "Tool invoked, if any.",
+      "type": "string"
+    },
+    "request_count": {
+      "description": "Request count for the event.",
+      "type": "integer"
+    },
+    "list_cost": {
+      "description": "List price; mirrors FOCUS ListCost semantics. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "billed_cost": {
+      "description": "Billed amount; mirrors FOCUS BilledCost. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "effective_cost": {
+      "description": "Effective cost after discounts; mirrors FOCUS EffectiveCost. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "cost_source": {
+      "description": "How cost was derived. allocated means the cost was assigned from a shared cost by an allocation rule rather than metered, rated, or invoiced for this record.",
+      "type": "string",
+      "enum": [
+        "measured",
+        "rated",
+        "invoiced",
+        "allocated"
+      ]
+    },
+    "pricing_ref": {
+      "description": "Price-sheet row ID.",
+      "type": "string"
+    },
+    "invoice_id": {
+      "description": "Vendor invoice identifier.",
+      "type": "string"
+    },
+    "focus_charge_ref": {
+      "description": "Pointer into a FOCUS dataset row.",
+      "type": "string"
+    },
+    "cost_center": {
+      "description": "Cost center or department.",
+      "type": "string"
+    },
+    "project_id": {
+      "description": "Project identifier.",
+      "type": "string"
+    },
+    "customer_id": {
+      "description": "Customer or account identifier.",
+      "type": "string"
+    },
+    "product_line": {
+      "description": "Product line.",
+      "type": "string"
+    },
+    "environment": {
+      "description": "Runtime environment.",
+      "type": "string",
+      "enum": [
+        "prod",
+        "staging",
+        "dev",
+        "other"
+      ]
+    },
+    "tags": {
+      "description": "Free-form tags.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "allocation_method": {
+      "description": "How cost was allocated.",
+      "type": "string",
+      "enum": [
+        "direct",
+        "rule",
+        "split"
+      ]
+    },
+    "allocation_rule_id": {
+      "description": "Rule that produced the allocation.",
+      "type": "string"
+    },
+    "split_fraction": {
+      "description": "Share of a split allocation. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "settlement_rail": {
+      "description": "How money moved.",
+      "type": "string",
+      "enum": [
+        "invoice",
+        "card",
+        "ach",
+        "wire",
+        "x402",
+        "other_onchain"
+      ]
+    },
+    "settlement_network": {
+      "description": "CAIP-2 chain ID where applicable.",
+      "type": "string"
+    },
+    "settlement_asset": {
+      "description": "CAIP-19 asset identifier.",
+      "type": "string"
+    },
+    "settlement_amount": {
+      "description": "Settled amount. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "settlement_ref": {
+      "description": "Tx hash, statement line, or remittance ID.",
+      "type": "string"
+    },
+    "settled_at": {
+      "description": "Settlement timestamp.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "reconciliation_status": {
+      "description": "Join status against billing/telemetry.",
+      "type": "string",
+      "enum": [
+        "unmatched",
+        "matched",
+        "partial",
+        "disputed"
+      ]
+    },
+    "budget_id": {
+      "description": "Budget that constrained or funded the spend.",
+      "type": "string"
+    },
+    "policy_id": {
+      "description": "Policy identifier.",
+      "type": "string"
+    },
+    "authorization_ref": {
+      "description": "Mandate / verifiable-intent credential ID.",
+      "type": "string"
+    },
+    "approval_type": {
+      "description": "How spend was authorized.",
+      "type": "string",
+      "enum": [
+        "policy_auto",
+        "pre_authorized",
+        "human_approved"
+      ]
+    },
+    "outcome_event_id": {
+      "description": "Linked outcome event.",
+      "type": "string"
+    },
+    "outcome_type": {
+      "description": "Outcome class (org-defined).",
+      "type": "string"
+    },
+    "outcome_value": {
+      "description": "Numeric outcome value. Decimal value encoded as a JSON number; parse with decimal precision, not binary floating point.",
+      "type": "number"
+    },
+    "outcome_unit": {
+      "description": "Unit for outcome_value.",
+      "type": "string"
+    },
+    "business_metric_ref": {
+      "description": "Pointer to a business metric definition.",
+      "type": "string"
+    }
+  }
+}

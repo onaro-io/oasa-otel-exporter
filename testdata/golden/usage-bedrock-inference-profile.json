@@ -1,0 +1,25 @@
+{
+  "record_id": "01a05d45-35e0-76c9-803a-593de1e3fffc",
+  "record_type": "usage",
+  "schema_version": "0.1",
+  "occurred_at": "2026-09-01T14:00:12Z",
+  "recorded_at": "2026-09-01T14:00:13Z",
+  "source_system": "otel-collector",
+  "source_record_id": "0af7651916cd43dd8448eb211c80319c/b9c7c989f97918e1",
+  "currency": "USD",
+  "agent_id": "support-agent",
+  "agent_name": "Support Agent",
+  "trace_id": "0af7651916cd43dd8448eb211c80319c",
+  "span_id": "b9c7c989f97918e1",
+  "provider": "aws.bedrock",
+  "model": "arn:aws:bedrock:us-east-1:111122223333:application-inference-profile/support-agent",
+  "operation": "chat",
+  "input_tokens": 4000,
+  "output_tokens": 900,
+  "request_count": 1,
+  "cost_center": "CustomerSuccess",
+  "environment": "prod",
+  "tags": {
+    "team": "support"
+  }
+}

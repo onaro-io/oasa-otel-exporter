@@ -1,0 +1,82 @@
+# OASA usage-record mapping for OpenTelemetry GenAI spans.
+#
+# This file is embedded in the exporter as the default mapping. To change it,
+# copy it, edit the copy, and point the exporter's `mapping_file` setting at it.
+#
+# `fields` lists, for each OASA field, the attributes to read in priority order;
+# the first one present on the span wins. A source is either
+#   span.attributes["key"]      an attribute on the span, or
+#   resource.attributes["key"]  an attribute on the span's resource.
+# The exporter's `attribution` settings replace the sources for cost_center,
+# project_id, customer_id and environment.
+#
+# The envelope (record_id, record_type, schema_version, occurred_at,
+# recorded_at, source_system, source_record_id, currency), trace_id, span_id,
+# request_count and tags are set by the exporter and cannot be mapped here.
+
+# Spans with no attribute under this prefix are not GenAI spans and are dropped.
+genai_attribute_prefix: "gen_ai."
+
+fields:
+  provider:
+    - 'span.attributes["gen_ai.provider.name"]'
+    # Deprecated name, still emitted by older instrumentation.
+    - 'span.attributes["gen_ai.system"]'
+  model:
+    - 'span.attributes["gen_ai.response.model"]'
+    - 'span.attributes["gen_ai.request.model"]'
+  operation:
+    - 'span.attributes["gen_ai.operation.name"]'
+  input_tokens:
+    - 'span.attributes["gen_ai.usage.input_tokens"]'
+  output_tokens:
+    - 'span.attributes["gen_ai.usage.output_tokens"]'
+  cached_tokens:
+    - 'span.attributes["gen_ai.usage.cache_read.input_tokens"]'
+  reasoning_tokens:
+    - 'span.attributes["gen_ai.usage.reasoning.output_tokens"]'
+  tool_name:
+    - 'span.attributes["gen_ai.tool.name"]'
+  agent_id:
+    - 'span.attributes["gen_ai.agent.id"]'
+  agent_name:
+    - 'span.attributes["gen_ai.agent.name"]'
+    - 'resource.attributes["service.name"]'
+  session_id:
+    - 'span.attributes["gen_ai.conversation.id"]'
+  environment:
+    - 'resource.attributes["deployment.environment.name"]'
+    # Deprecated name, still emitted by older SDKs.
+    - 'resource.attributes["deployment.environment"]'
+
+# Translations turn source values into OASA enum values. A value with no entry
+# takes `default`; with no `default`, the field is omitted. Every target value
+# must be a valid OASA enum value.
+translations:
+  operation:
+    values:
+      chat: chat
+      text_completion: completion
+      generate_content: chat
+      embeddings: embeddings
+      execute_tool: tool_call
+      create_agent: other
+      invoke_agent: other
+    default: other
+  environment:
+    values:
+      production: prod
+      prod: prod
+      live: prod
+      staging: staging
+      stage: staging
+      preprod: staging
+      development: dev
+      dev: dev
+      test: dev
+      local: dev
+    default: other
+
+# A span that carries a tool name records this operation, whatever
+# gen_ai.operation.name says.
+tool_call_operation: tool_call
