@@ -29,11 +29,20 @@ You need [Go](https://go.dev/dl/) 1.26 or later, `git`, and `curl`.
    ./_build/otelcol-oasa --config examples/config.yaml
    ```
 
-3. In a second terminal, send the sample trace (one OpenAI chat span and one plain HTTP span):
+3. In a second terminal, send the sample trace (one OpenAI chat span and one plain HTTP span). Both commands do the same thing; use the one for your shell.
 
-   ```sh
+   bash:
+
+   ```bash
    curl -s -X POST -H "Content-Type: application/json" \
      --data @examples/trace.json http://127.0.0.1:4318/v1/traces
+   ```
+
+   PowerShell:
+
+   ```powershell
+   Invoke-RestMethod -Method Post -ContentType "application/json" `
+     -InFile examples/trace.json -Uri http://127.0.0.1:4318/v1/traces
    ```
 
 4. Open the output. There is one record; the HTTP span was dropped because it has no `gen_ai.*` attributes:
