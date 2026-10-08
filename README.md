@@ -23,7 +23,7 @@ You need [Go](https://go.dev/dl/) 1.26 or later, `git`, and `curl`.
 
    `go install` puts `builder` in `$(go env GOPATH)/bin` (usually `~/go/bin`, or `%USERPROFILE%\go\bin` on Windows); if your shell reports `builder` not found, add that directory to your `PATH`.
 
-   The binary is `_build/otelcol-oasa` (`_build\otelcol-oasa.exe` on Windows). Once `v0.1.0` is released, you can download a prebuilt binary from the release page instead.
+   The binary is `_build/otelcol-oasa` (`_build\otelcol-oasa.exe` on Windows). Prebuilt binaries for Linux, macOS, and Windows are on the [releases page](https://github.com/onaro-io/oasa-otel-exporter/releases) if you'd rather skip the build.
 
 2. Run it with the quick-start config, which listens for OTLP on `127.0.0.1:4318` and writes to `./oasa-usage.ndjson`:
 

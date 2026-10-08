@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (v0.1.0)
+## v0.1.0 - 2026-10-08
 
 First release of the OASA exporter for the OpenTelemetry Collector.
 
