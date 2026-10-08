@@ -62,7 +62,10 @@ To use the exporter in your own collector build, add it to your `ocb` manifest:
 ```yaml
 exporters:
   - gomod: github.com/onaro-io/oasa-otel-exporter v0.1.0
+    name: oasaexporter
 ```
+
+`name` is required: ocb derives the Go import name from the module path, and the hyphens in `oasa-otel-exporter` aren't valid in one.
 
 ## Configuration
 
