@@ -64,7 +64,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: otelcol-oasa-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: otelcol-oasa_*.*
+          path: |
+            otelcol-oasa_*.tar.gz
+            otelcol-oasa_*.zip
 
   publish:
     needs: collectors
@@ -80,5 +82,5 @@ jobs:
         run: |
           set -euo pipefail
           cd dist
-          sha256sum otelcol-oasa_* > checksums.txt
-          gh release upload "${GITHUB_REF_NAME}" otelcol-oasa_* checksums.txt --repo "${GITHUB_REPOSITORY}" --clobber
+          sha256sum otelcol-oasa_*.tar.gz otelcol-oasa_*.zip > checksums.txt
+          gh release upload "${GITHUB_REF_NAME}" otelcol-oasa_*.tar.gz otelcol-oasa_*.zip checksums.txt --repo "${GITHUB_REPOSITORY}" --clobber
