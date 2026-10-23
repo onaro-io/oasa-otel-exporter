@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.0 - unreleased
+
+Proposed. Not released.
+
+### Changed
+- `agent_id` is read from `oasa.agent.id`. `gen_ai.agent.id`, or else `gen_ai.main_agent.id`, is written to `external_identity_ref` with `identity_scheme` `other`. Neither hosted id is copied into `agent_id` or `parent_agent_id`.
+- `cost_center`, `agent_owner`, and `project_id` are read from `oasa.cost_center`, `oasa.agent.owner`, and `oasa.project.id`. An `attribution` setting for one of those fields fills it only when the span left it empty.
+- A set common field carries per-field provenance. An `oasa.*` attribute is `declared`. A configured fallback is `manual`.
+
+### Added
+- `attribution.legacy_gen_ai_agent_id`, deprecated and off by default. When true, `gen_ai.agent.id` is copied to `agent_id`, which is the v0.1.0 behavior, and is not copied to `external_identity_ref`.
+
 ## v0.1.0 - 2026-10-08
 
 First release of the OASA exporter for the OpenTelemetry Collector.

@@ -21,5 +21,25 @@
   "request_count": 1,
   "cost_center": "Customer Success",
   "project_id": "proj_support",
-  "environment": "prod"
+  "environment": "prod",
+  "attribution": {
+    "agent_id": {
+      "method": "declared",
+      "source_system": "otel",
+      "identity_type": "oasa.agent.id",
+      "identity_value": "agent-support-47"
+    },
+    "cost_center": {
+      "method": "manual",
+      "source_system": "otel",
+      "identity_type": "oasa.manual",
+      "identity_value": "cost.center"
+    },
+    "project_id": {
+      "method": "manual",
+      "source_system": "otel",
+      "identity_type": "oasa.manual",
+      "identity_value": "project.id"
+    }
+  }
 }

@@ -54,7 +54,7 @@ You need [Go](https://go.dev/dl/) 1.26 or later, `git`, and `curl`.
    ```
 
    ```json
-   {"record_id":"01a05d7f-b288-7532-8207-8cb53896d9e1","record_type":"usage","schema_version":"0.1","occurred_at":"2026-09-01T15:04:05Z","recorded_at":"…","source_system":"otel-collector","source_record_id":"4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7","currency":"USD","agent_id":"agent-support-47","agent_name":"Support Triage","session_id":"sess-2f91","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","provider":"openai","model":"gpt-4.1","operation":"chat","input_tokens":1200,"output_tokens":340,"cached_tokens":800,"request_count":1,"cost_center":"Customer Success","project_id":"proj_support","environment":"prod"}
+   {"record_id":"01a05d7f-b288-7532-8207-8cb53896d9e1","record_type":"usage","schema_version":"0.1","occurred_at":"2026-09-01T15:04:05Z","recorded_at":"…","source_system":"otel-collector","source_record_id":"4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7","currency":"USD","agent_id":"agent-support-47","agent_name":"Support Triage","session_id":"sess-2f91","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","provider":"openai","model":"gpt-4.1","operation":"chat","input_tokens":1200,"output_tokens":340,"cached_tokens":800,"request_count":1,"cost_center":"Customer Success","project_id":"proj_support","environment":"prod","attribution":{"agent_id":{"method":"declared","source_system":"otel","identity_type":"oasa.agent.id","identity_value":"agent-support-47"},"cost_center":{"method":"manual","source_system":"otel","identity_type":"oasa.manual","identity_value":"cost.center"},"project_id":{"method":"manual","source_system":"otel","identity_type":"oasa.manual","identity_value":"project.id"}}}
    ```
 
 To use the exporter in your own collector build, add it to your `ocb` manifest:
@@ -78,10 +78,12 @@ exporters:
       max_megabytes: 100            # rotate at this size
       max_backups: 10               # rotated files to keep; 0 keeps all
     attribution:
-      cost_center: resource.attributes["cost.center"]
-      project_id: resource.attributes["project.id"]
+      cost_center: resource.attributes["cost.center"]   # used when oasa.cost_center is absent
+      agent_owner: resource.attributes["agent.owner"]   # used when oasa.agent.owner is absent
+      project_id: resource.attributes["project.id"]     # used when oasa.project.id is absent
       customer_id: span.attributes["app.customer.id"]
       environment: resource.attributes["deployment.environment.name"]
+      legacy_gen_ai_agent_id: false  # deprecated; see Migrating from v0.1.0
       tags_from: ["team", "owner"]  # copied into tags, span attribute first
     currency: USD                   # envelope currency; usage records carry no money
     mapping_file: ""                # optional replacement for the built-in mapping.yaml
@@ -103,7 +105,7 @@ exporters:
 
 The standard exporter settings `timeout`, `retry_on_failure`, and `sending_queue` apply as in any collector exporter. See [`examples/config-http.yaml`](examples/config-http.yaml).
 
-Attribution expressions are `span.attributes["key"]` or `resource.attributes["key"]`. They replace the default sources for that field.
+Attribution expressions are `span.attributes["key"]` or `resource.attributes["key"]`. For `cost_center`, `agent_owner`, and `project_id` the expression fills the field only when the span left it empty. For `customer_id` and `environment` it replaces the mapping file's sources.
 
 ## Mapping
 
@@ -124,10 +126,15 @@ The mapping lives in [`mapping.yaml`](mapping.yaml), not in code. It is embedded
 | `input_tokens`, `output_tokens` | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | `cached_tokens`, `reasoning_tokens` | `gen_ai.usage.cache_read.input_tokens`, `gen_ai.usage.reasoning.output_tokens` |
 | `tool_name` | `gen_ai.tool.name` |
-| `agent_id`, `agent_name` | `gen_ai.agent.id`, `gen_ai.agent.name`; else resource `service.name` as `agent_name` with `agent_id` omitted |
+| `agent_id` | `oasa.agent.id`. Declared. `service.name` does not fill this field. |
+| `agent_name` | `gen_ai.agent.name`; else resource `service.name` |
+| `agent_owner` | `oasa.agent.owner`. Declared. An `attribution.agent_owner` expression fills it only when the attribute is absent, and that fill is `manual`. |
+| `external_identity_ref` | `gen_ai.agent.id`, else `gen_ai.main_agent.id`. A hosted agent resource id. Not copied into `agent_id` or `parent_agent_id`. |
+| `identity_scheme` | `other` when `external_identity_ref` is set |
 | `session_id` | `gen_ai.conversation.id` |
 | `trace_id`, `span_id` | From the span |
-| `cost_center`, `project_id`, `customer_id` | `attribution` settings |
+| `cost_center`, `project_id` | `oasa.cost_center` and `oasa.project.id` when set (declared). Otherwise the `attribution` settings, recorded as `manual`. |
+| `customer_id` | `attribution.customer_id`. Not a common attribution field, so it has no provenance entry. |
 | `environment` | Resource `deployment.environment.name` (or deprecated `deployment.environment`), translated (table below) |
 | `tags` | Attributes named in `attribution.tags_from` |
 | `request_count` | `1` |
@@ -150,6 +157,23 @@ Translations into OASA enum values:
 | anything else | `other` |
 
 A missing attribute leaves its field out of the record; the exporter never writes `null`. Token counts sent as integral doubles or numeric strings are accepted; anything else is omitted.
+
+When `agent_id`, `agent_owner`, `cost_center`, or `project_id` is set, the record includes `attribution` with one entry per field that is set. An `oasa.*` attribute is `declared`: `identity_type` is the attribute name, `identity_value` is the attribute value, and `source_system` is `otel`. A value taken from an `attribution` setting is `manual`: `identity_type` is `oasa.manual` and `identity_value` is the attribute key the setting names.
+
+## Migrating from v0.1.0
+
+v0.2.0 is proposed and is not released. v0.1.0 wrote `gen_ai.agent.id` into `agent_id` and did not write `external_identity_ref` or `attribution`. That output remains valid OASA 0.1.2. It is not the 0.1.3 mapping.
+
+To keep the v0.1.0 agent id behavior while you move application ids onto `oasa.agent.id`, set the deprecated option:
+
+```yaml
+exporters:
+  oasa:
+    attribution:
+      legacy_gen_ai_agent_id: true
+```
+
+While it is true, `agent_id` is copied from `gen_ai.agent.id` and that id is not also written to `external_identity_ref`. `oasa.agent.id` is ignored for `agent_id`. The option is off by default. New instrumentation should set `oasa.agent.id` to the application's stable agent id, and leave `gen_ai.agent.id` for a hosted agent resource id (an assistant id, a Bedrock agent ARN, a reasoning-engine name).
 
 ## Deterministic record IDs
 
@@ -185,7 +209,7 @@ make integration  # builds a collector with ocb and runs a trace end to end
 make sync-spec    # refresh testdata from a sibling checkout of the spec repository
 ```
 
-The golden records in `testdata/golden/` and the schema in `testdata/schema/` are copies from the [spec repository](https://github.com/onaro-io/agent-spend-attribution) (`examples/` and `schema/`). The golden tests reproduce them exactly, normalizing only `recorded_at`.
+The schema in `testdata/schema/` is the OASA 0.1.3 schema from the [spec repository](https://github.com/onaro-io/agent-spend-attribution). The golden records in `testdata/golden/` are this exporter's expected usage records for `testdata/otlp/`. The golden tests reproduce them exactly, normalizing only `recorded_at`. `make sync-spec` refreshes the schema and does not overwrite the goldens.
 
 The `record` package is importable on its own (`github.com/onaro-io/oasa-otel-exporter/record`) for anything that needs to write OASA 0.1 records.
 

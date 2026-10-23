@@ -13,8 +13,9 @@ import (
 )
 
 // TestGolden feeds OTLP JSON fixtures through the translator and compares the
-// output with the golden records from the OASA spec repository (examples/).
-// Only recorded_at is normalized: record_id is deterministic and must match.
+// output with the golden records in testdata/golden. Those records follow the
+// OASA examples and add 0.1.3 provenance. Only recorded_at is normalized:
+// record_id is deterministic and must match.
 func TestGolden(t *testing.T) {
 	for _, name := range []string{"usage-openai-chat", "usage-tool-call", "usage-bedrock-inference-profile"} {
 		t.Run(name, func(t *testing.T) {

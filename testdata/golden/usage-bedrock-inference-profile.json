@@ -9,6 +9,8 @@
   "currency": "USD",
   "agent_id": "support-agent",
   "agent_name": "Support Agent",
+  "identity_scheme": "other",
+  "external_identity_ref": "arn:aws:bedrock:us-east-1:111122223333:agent/SUPPORTAGENT",
   "trace_id": "0af7651916cd43dd8448eb211c80319c",
   "span_id": "b9c7c989f97918e1",
   "provider": "aws.bedrock",
@@ -21,5 +23,19 @@
   "environment": "prod",
   "tags": {
     "team": "support"
+  },
+  "attribution": {
+    "agent_id": {
+      "method": "declared",
+      "source_system": "otel",
+      "identity_type": "oasa.agent.id",
+      "identity_value": "support-agent"
+    },
+    "cost_center": {
+      "method": "manual",
+      "source_system": "otel",
+      "identity_type": "oasa.manual",
+      "identity_value": "cost.center"
+    }
   }
 }

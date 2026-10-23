@@ -184,18 +184,87 @@ func TestMappingToolNameForcesToolCall(t *testing.T) {
 func TestMappingAgentIdentity(t *testing.T) {
 	tr := newTestTranslator(t, nil)
 	r := translateOne(t, tr,
-		map[string]any{"gen_ai.operation.name": "chat", "gen_ai.agent.id": "agent-47", "gen_ai.agent.name": "Support Triage"},
+		map[string]any{
+			"gen_ai.operation.name": "chat",
+			"oasa.agent.id":         "agent-47",
+			"gen_ai.agent.id":       "asst_hosted",
+			"gen_ai.main_agent.id":  "asst_main",
+			"gen_ai.agent.name":     "Support Triage",
+		},
 		map[string]any{"service.name": "support-svc"})
 	if r.AgentID != "agent-47" || r.AgentName != "Support Triage" {
 		t.Errorf("agent_id=%q agent_name=%q", r.AgentID, r.AgentName)
+	}
+	if r.ExternalIdentityRef != "asst_hosted" || r.IdentityScheme != "other" {
+		t.Errorf("external_identity_ref=%q identity_scheme=%q, want gen_ai.agent.id", r.ExternalIdentityRef, r.IdentityScheme)
+	}
+	if r.ParentAgentID != "" {
+		t.Errorf("parent_agent_id = %q, hosted ids are not parent ids", r.ParentAgentID)
+	}
+	if r.Attribution.AgentID == nil || r.Attribution.AgentID.Method != "declared" ||
+		r.Attribution.AgentID.SourceSystem != "otel" ||
+		r.Attribution.AgentID.IdentityType != "oasa.agent.id" ||
+		r.Attribution.AgentID.IdentityValue != "agent-47" {
+		t.Errorf("agent attribution = %+v", r.Attribution.AgentID)
+	}
+
+	r = translateOne(t, tr, map[string]any{"gen_ai.operation.name": "chat", "gen_ai.main_agent.id": "asst_main"}, nil)
+	if r.AgentID != "" {
+		t.Errorf("agent_id = %q, want omitted when only gen_ai.main_agent.id is set", r.AgentID)
+	}
+	if r.ExternalIdentityRef != "asst_main" || r.IdentityScheme != "other" {
+		t.Errorf("external_identity_ref=%q identity_scheme=%q, want gen_ai.main_agent.id", r.ExternalIdentityRef, r.IdentityScheme)
 	}
 
 	r = translateOne(t, tr, minimalGenAI, map[string]any{"service.name": "support-svc"})
 	if r.AgentName != "support-svc" {
 		t.Errorf("agent_name = %q, want service.name fallback", r.AgentName)
 	}
-	if r.AgentID != "" {
-		t.Errorf("agent_id = %q, want omitted when gen_ai.agent.id is absent", r.AgentID)
+	if r.AgentID != "" || r.ExternalIdentityRef != "" || r.IdentityScheme != "" {
+		t.Errorf("agent_id=%q external=%q scheme=%q, want service.name to fill agent_name only", r.AgentID, r.ExternalIdentityRef, r.IdentityScheme)
+	}
+}
+
+func TestLegacyGenAIAgentID(t *testing.T) {
+	tr := newTestTranslator(t, func(c *Config) { c.Attribution.LegacyGenAIAgentID = true })
+	r := translateOne(t, tr, map[string]any{
+		"gen_ai.operation.name": "chat",
+		"gen_ai.agent.id":       "agent-47",
+		"oasa.agent.id":         "from-oasa",
+		"gen_ai.main_agent.id":  "asst_main",
+	}, nil)
+	if r.AgentID != "agent-47" {
+		t.Errorf("agent_id = %q, want gen_ai.agent.id", r.AgentID)
+	}
+	if r.ExternalIdentityRef != "" || r.IdentityScheme != "" {
+		t.Errorf("legacy mode wrote external_identity_ref=%q identity_scheme=%q", r.ExternalIdentityRef, r.IdentityScheme)
+	}
+	got := r.Attribution.AgentID
+	if got == nil || got.Method != "declared" || got.SourceSystem != "otel" || got.IdentityType != "gen_ai.agent.id" || got.IdentityValue != "agent-47" {
+		t.Errorf("legacy attribution = %+v", got)
+	}
+}
+
+func TestOASAAttributeBeatsAttributionConfig(t *testing.T) {
+	tr := newTestTranslator(t, nil)
+	r := translateOne(t, tr,
+		map[string]any{
+			"gen_ai.operation.name": "chat",
+			"oasa.cost_center":      "cc-4100",
+			"oasa.agent.owner":      "support",
+			"oasa.project.id":       "proj-app",
+		},
+		map[string]any{"cost.center": "Customer Success", "project.id": "proj_support"})
+	if r.CostCenter != "cc-4100" || r.ProjectID != "proj-app" || r.AgentOwner != "support" {
+		t.Errorf("cost_center=%q project_id=%q agent_owner=%q", r.CostCenter, r.ProjectID, r.AgentOwner)
+	}
+	cc := r.Attribution.CostCenter
+	if cc == nil || cc.Method != "declared" || cc.IdentityType != "oasa.cost_center" || cc.IdentityValue != "cc-4100" || cc.SourceSystem != "otel" {
+		t.Errorf("cost_center attribution = %+v", cc)
+	}
+	owner := r.Attribution.AgentOwner
+	if owner == nil || owner.Method != "declared" || owner.IdentityType != "oasa.agent.owner" || owner.IdentityValue != "support" {
+		t.Errorf("agent_owner attribution = %+v", owner)
 	}
 }
 
@@ -215,6 +284,16 @@ func TestMappingAttribution(t *testing.T) {
 		map[string]any{"cost.center": "Customer Success", "project.id": "proj_support"})
 	if r.CostCenter != "Customer Success" || r.ProjectID != "proj_support" || r.CustomerID != "acme" {
 		t.Errorf("cost_center=%q project_id=%q customer_id=%q", r.CostCenter, r.ProjectID, r.CustomerID)
+	}
+	cc := r.Attribution.CostCenter
+	if cc == nil || cc.Method != "manual" || cc.IdentityType != "oasa.manual" || cc.IdentityValue != "cost.center" || cc.SourceSystem != "otel" {
+		t.Errorf("cost_center fallback attribution = %+v", cc)
+	}
+	if r.Attribution.ProjectID == nil || r.Attribution.ProjectID.Method != "manual" || r.Attribution.ProjectID.IdentityValue != "project.id" {
+		t.Errorf("project_id fallback attribution = %+v", r.Attribution.ProjectID)
+	}
+	if r.Attribution.AgentID != nil {
+		t.Errorf("customer_id must not create an agent_id provenance entry: %+v", r.Attribution)
 	}
 }
 
@@ -265,7 +344,8 @@ func TestMissingOptionalAttributesAreOmitted(t *testing.T) {
 		t.Fatalf("output contains null: %s", s)
 	}
 	for _, absent := range []string{"provider", "model", "input_tokens", "output_tokens", "cached_tokens", "reasoning_tokens",
-		"tool_name", "agent_id", "agent_name", "session_id", "cost_center", "project_id", "customer_id", "environment", "tags"} {
+		"tool_name", "agent_id", "agent_name", "agent_owner", "session_id", "cost_center", "project_id", "customer_id", "environment", "tags",
+		"external_identity_ref", "identity_scheme", "attribution"} {
 		if strings.Contains(s, `"`+absent+`"`) {
 			t.Errorf("%s present although its attribute is missing: %s", absent, s)
 		}

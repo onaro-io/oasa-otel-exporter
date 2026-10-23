@@ -26,7 +26,8 @@
                 { "key": "gen_ai.request.model", "value": { "stringValue": "arn:aws:bedrock:us-east-1:111122223333:application-inference-profile/support-agent" } },
                 { "key": "gen_ai.usage.input_tokens", "value": { "intValue": "4000" } },
                 { "key": "gen_ai.usage.output_tokens", "value": { "intValue": "900" } },
-                { "key": "gen_ai.agent.id", "value": { "stringValue": "support-agent" } },
+                { "key": "oasa.agent.id", "value": { "stringValue": "support-agent" } },
+                { "key": "gen_ai.agent.id", "value": { "stringValue": "arn:aws:bedrock:us-east-1:111122223333:agent/SUPPORTAGENT" } },
                 { "key": "gen_ai.agent.name", "value": { "stringValue": "Support Agent" } }
               ]
             }

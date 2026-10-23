@@ -24,7 +24,8 @@
                 { "key": "gen_ai.operation.name", "value": { "stringValue": "execute_tool" } },
                 { "key": "gen_ai.tool.name", "value": { "stringValue": "crm.lookup" } },
                 { "key": "gen_ai.tool.call.id", "value": { "stringValue": "call_7Hx2" } },
-                { "key": "gen_ai.agent.id", "value": { "stringValue": "agent-support-47" } },
+                { "key": "oasa.agent.id", "value": { "stringValue": "agent-support-47" } },
+                { "key": "gen_ai.main_agent.id", "value": { "stringValue": "asst_support47" } },
                 { "key": "gen_ai.agent.name", "value": { "stringValue": "Support Triage" } },
                 { "key": "gen_ai.conversation.id", "value": { "stringValue": "sess-2f91" } }
               ]

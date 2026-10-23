@@ -83,7 +83,7 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 
 	spanAttrs := span.Attributes()
 	for _, fm := range t.mapping.fields {
-		v, ok := firstValue(fm.sources, spanAttrs, resAttrs)
+		v, src, ok := firstValue(fm.sources, spanAttrs, resAttrs)
 		if !ok {
 			continue
 		}
@@ -106,7 +106,11 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 				continue
 			}
 			_ = r.SetString(fm.field, s)
+			noteAttribution(r, fm.field, src, s)
 		}
+	}
+	if r.ExternalIdentityRef != "" {
+		r.IdentityScheme = "other"
 	}
 
 	if r.ToolName != "" && t.mapping.toolCallOperation != "" {
@@ -131,17 +135,43 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 	return r
 }
 
-func firstValue(sources []source, spanAttrs, resAttrs pcommon.Map) (pcommon.Value, bool) {
+const (
+	provenanceSystem   = "otel"
+	manualIdentityType = "oasa.manual"
+)
+
+// noteAttribution writes declared or manual provenance for a common field.
+// A declared oasa.* attribute records the attribute name and its value.
+// A configured fallback records method manual, identity type oasa.manual,
+// and the attribute key the operator named.
+func noteAttribution(r *record.Record, field string, src source, value string) {
+	if src.method == "" || value == "" {
+		return
+	}
+	entry := record.AttributionEntry{
+		Method:        src.method,
+		SourceSystem:  provenanceSystem,
+		IdentityType:  src.key,
+		IdentityValue: value,
+	}
+	if src.method == methodManual {
+		entry.IdentityType = manualIdentityType
+		entry.IdentityValue = src.key
+	}
+	r.SetAttribution(field, entry)
+}
+
+func firstValue(sources []source, spanAttrs, resAttrs pcommon.Map) (pcommon.Value, source, bool) {
 	for _, s := range sources {
 		attrs := spanAttrs
 		if s.scope == scopeResource {
 			attrs = resAttrs
 		}
 		if v, ok := attrs.Get(s.key); ok && v.Type() != pcommon.ValueTypeEmpty {
-			return v, true
+			return v, s, true
 		}
 	}
-	return pcommon.Value{}, false
+	return pcommon.Value{}, source{}, false
 }
 
 func asInt(v pcommon.Value) (int64, bool) {

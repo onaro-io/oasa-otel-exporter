@@ -13,7 +13,7 @@ func TestDefaultMappingIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := buildMapping(mf, nil)
+	m, err := buildMapping(mf, nil, false)
 	if err != nil {
 		t.Fatalf("embedded mapping.yaml is invalid: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestBuildMappingRejectsInvalidFiles(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			_, err := buildMapping(&tc.mf, nil)
+			_, err := buildMapping(&tc.mf, nil, false)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("buildMapping() = %v, want error containing %q", err, tc.want)
 			}

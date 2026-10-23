@@ -72,13 +72,20 @@ type HTTPConfig struct {
 }
 
 // AttributionConfig maps allocation fields to attributes. Each value is an
-// expression like resource.attributes["cost.center"] and replaces the
-// mapping file's sources for that field.
+// expression like resource.attributes["cost.center"]. For cost_center,
+// agent_owner, and project_id the expression fills the field only when the
+// span left it empty. For customer_id and environment it replaces the
+// mapping file's sources.
 type AttributionConfig struct {
 	CostCenter  string `mapstructure:"cost_center"`
+	AgentOwner  string `mapstructure:"agent_owner"`
 	ProjectID   string `mapstructure:"project_id"`
 	CustomerID  string `mapstructure:"customer_id"`
 	Environment string `mapstructure:"environment"`
+	// LegacyGenAIAgentID is deprecated and off by default. When true,
+	// gen_ai.agent.id is copied to agent_id, which is the v0.1.0 behavior,
+	// and is not copied to external_identity_ref.
+	LegacyGenAIAgentID bool `mapstructure:"legacy_gen_ai_agent_id"`
 	// TagsFrom lists attribute keys copied into tags, span attributes first.
 	TagsFrom []string `mapstructure:"tags_from"`
 
@@ -88,6 +95,7 @@ type AttributionConfig struct {
 func (a AttributionConfig) overrides() map[string]string {
 	return map[string]string{
 		"cost_center": a.CostCenter,
+		"agent_owner": a.AgentOwner,
 		"project_id":  a.ProjectID,
 		"customer_id": a.CustomerID,
 		"environment": a.Environment,
@@ -136,5 +144,5 @@ func (cfg *Config) buildMapping() (*mapping, error) {
 	if err != nil {
 		return nil, err
 	}
-	return buildMapping(mf, cfg.Attribution.overrides())
+	return buildMapping(mf, cfg.Attribution.overrides(), cfg.Attribution.LegacyGenAIAgentID)
 }
