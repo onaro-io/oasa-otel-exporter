@@ -73,6 +73,9 @@ type Attribution struct {
 
 // SetAttribution records provenance for one common field.
 func (r *Record) SetAttribution(field string, e AttributionEntry) {
+	if r.Attribution == nil {
+		r.Attribution = &Attribution{}
+	}
 	entry := e
 	switch field {
 	case "agent_id":
@@ -152,7 +155,7 @@ type Record struct {
 	AllocationMethod string            `json:"allocation_method,omitempty"`
 	AllocationRuleID string            `json:"allocation_rule_id,omitempty"`
 	SplitFraction    Decimal           `json:"split_fraction,omitempty"`
-	Attribution      Attribution       `json:"attribution,omitempty"`
+	Attribution      *Attribution      `json:"attribution,omitempty"`
 
 	// Group 7 — Settlement join
 	SettlementRail       string  `json:"settlement_rail,omitempty"`
