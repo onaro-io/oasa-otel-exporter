@@ -7,12 +7,15 @@
 # the first one present on the span wins. A source is either
 #   span.attributes["key"]      an attribute on the span, or
 #   resource.attributes["key"]  an attribute on the span's resource.
-# The exporter's `attribution` settings for cost_center, agent_owner, and
-# project_id fill that field only when the span left it empty. They do not
-# replace an oasa.* attribute. Settings for customer_id and environment still
-# replace the sources listed here. `attribution.legacy_gen_ai_agent_id` is
-# deprecated and off by default; when set, agent_id reads gen_ai.agent.id
-# and that id is not copied to external_identity_ref.
+# An attribution setting that names an attribute is an alias. For
+# cost_center, agent_owner, and project_id it fills the field only when the
+# span left it empty, and that fill is declared. It does not replace an
+# oasa.* attribute. customer_id and environment settings still replace the
+# sources listed here. Static defaults live under attribution.defaults and
+# are applied by the exporter after these sources; they are method rule.
+# `attribution.legacy_gen_ai_agent_id` is deprecated and off by default; when
+# set, agent_id reads gen_ai.agent.id and that id is not copied to
+# external_identity_ref.
 #
 # The envelope (record_id, record_type, schema_version, occurred_at,
 # recorded_at, source_system, source_record_id, currency), trace_id, span_id,

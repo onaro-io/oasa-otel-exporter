@@ -54,7 +54,7 @@ You need [Go](https://go.dev/dl/) 1.26 or later, `git`, and `curl`.
    ```
 
    ```json
-   {"record_id":"01a05d7f-b288-7532-8207-8cb53896d9e1","record_type":"usage","schema_version":"0.1","occurred_at":"2026-09-01T15:04:05Z","recorded_at":"…","source_system":"otel-collector","source_record_id":"4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7","currency":"USD","agent_id":"agent-support-47","agent_name":"Support Triage","session_id":"sess-2f91","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","provider":"openai","model":"gpt-4.1","operation":"chat","input_tokens":1200,"output_tokens":340,"cached_tokens":800,"request_count":1,"cost_center":"Customer Success","project_id":"proj_support","environment":"prod","attribution":{"agent_id":{"method":"declared","source_system":"otel","identity_type":"oasa.agent.id","identity_value":"agent-support-47"},"cost_center":{"method":"manual","source_system":"otel","identity_type":"oasa.manual","identity_value":"cost.center"},"project_id":{"method":"manual","source_system":"otel","identity_type":"oasa.manual","identity_value":"project.id"}}}
+   {"record_id":"01a05d7f-b288-7532-8207-8cb53896d9e1","record_type":"usage","schema_version":"0.1","occurred_at":"2026-09-01T15:04:05Z","recorded_at":"…","source_system":"otel-collector","source_record_id":"4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7","currency":"USD","agent_id":"agent-support-47","agent_name":"Support Triage","session_id":"sess-2f91","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","provider":"openai","model":"gpt-4.1","operation":"chat","input_tokens":1200,"output_tokens":340,"cached_tokens":800,"request_count":1,"cost_center":"Customer Success","project_id":"proj_support","environment":"prod","attribution":{"agent_id":{"method":"declared","source_system":"otel","identity_type":"oasa.agent.id","identity_value":"agent-support-47"},"cost_center":{"method":"declared","source_system":"otel","identity_type":"cost.center","identity_value":"Customer Success"},"project_id":{"method":"declared","source_system":"otel","identity_type":"project.id","identity_value":"proj_support"}}}
    ```
 
 To use the exporter in your own collector build, add it to your `ocb` manifest:
@@ -78,11 +78,14 @@ exporters:
       max_megabytes: 100            # rotate at this size
       max_backups: 10               # rotated files to keep; 0 keeps all
     attribution:
-      cost_center: resource.attributes["cost.center"]   # used when oasa.cost_center is absent
-      agent_owner: resource.attributes["agent.owner"]   # used when oasa.agent.owner is absent
-      project_id: resource.attributes["project.id"]     # used when oasa.project.id is absent
+      cost_center: resource.attributes["cost.center"]   # alias, used when oasa.cost_center is absent
+      agent_owner: resource.attributes["agent.owner"]   # alias, used when oasa.agent.owner is absent
+      project_id: resource.attributes["project.id"]     # alias, used when oasa.project.id is absent
       customer_id: span.attributes["app.customer.id"]
       environment: resource.attributes["deployment.environment.name"]
+      defaults:                       # static values, method rule, after attributes
+        rule_id: unassigned-cost-center
+        cost_center: cc-unassigned
       legacy_gen_ai_agent_id: false  # deprecated; see Migrating from v0.1.0
       tags_from: ["team", "owner"]  # copied into tags, span attribute first
     currency: USD                   # envelope currency; usage records carry no money
@@ -105,7 +108,7 @@ exporters:
 
 The standard exporter settings `timeout`, `retry_on_failure`, and `sending_queue` apply as in any collector exporter. See [`examples/config-http.yaml`](examples/config-http.yaml).
 
-Attribution expressions are `span.attributes["key"]` or `resource.attributes["key"]`. For `cost_center`, `agent_owner`, and `project_id` the expression fills the field only when the span left it empty. For `customer_id` and `environment` it replaces the mapping file's sources.
+Attribution expressions are `span.attributes["key"]` or `resource.attributes["key"]`. For `cost_center`, `agent_owner`, and `project_id` the expression is an attribute alias: it fills the field only when the span left it empty, and the fill is `declared`. For `customer_id` and `environment` it replaces the mapping file's sources. `attribution.defaults` holds static values for the four common fields. A default fills a field the attributes left empty. That fill is `rule`.
 
 ## Mapping
 
@@ -128,12 +131,12 @@ The mapping lives in [`mapping.yaml`](mapping.yaml), not in code. It is embedded
 | `tool_name` | `gen_ai.tool.name` |
 | `agent_id` | `oasa.agent.id`. Declared. `service.name` does not fill this field. |
 | `agent_name` | `gen_ai.agent.name`; else resource `service.name` |
-| `agent_owner` | `oasa.agent.owner`. Declared. An `attribution.agent_owner` expression fills it only when the attribute is absent, and that fill is `manual`. |
+| `agent_owner` | `oasa.agent.owner`. Declared. An `attribution.agent_owner` alias fills it only when the attribute is absent, and that fill is also `declared`. |
 | `external_identity_ref` | `gen_ai.agent.id`, else `gen_ai.main_agent.id`. A hosted agent resource id. Not copied into `agent_id` or `parent_agent_id`. |
 | `identity_scheme` | `other` when `external_identity_ref` is set |
 | `session_id` | `gen_ai.conversation.id` |
 | `trace_id`, `span_id` | From the span |
-| `cost_center`, `project_id` | `oasa.cost_center` and `oasa.project.id` when set (declared). Otherwise the `attribution` settings, recorded as `manual`. |
+| `cost_center`, `project_id` | `oasa.cost_center` and `oasa.project.id` when set. Otherwise the attribute alias, still `declared`. A `defaults` value fills the field only when both are absent, and that fill is `rule`. |
 | `customer_id` | `attribution.customer_id`. Not a common attribution field, so it has no provenance entry. |
 | `environment` | Resource `deployment.environment.name` (or deprecated `deployment.environment`), translated (table below) |
 | `tags` | Attributes named in `attribution.tags_from` |
@@ -158,7 +161,11 @@ Translations into OASA enum values:
 
 A missing attribute leaves its field out of the record; the exporter never writes `null`. Token counts sent as integral doubles or numeric strings are accepted; anything else is omitted.
 
-When `agent_id`, `agent_owner`, `cost_center`, or `project_id` is set, the record includes `attribution` with one entry per field that is set. An `oasa.*` attribute is `declared`: `identity_type` is the attribute name, `identity_value` is the attribute value, and `source_system` is `otel`. A value taken from an `attribution` setting is `manual`: `identity_type` is `oasa.manual` and `identity_value` is the attribute key the setting names.
+When `agent_id`, `agent_owner`, `cost_center`, or `project_id` is set, the record includes `attribution` with one entry per field that is set. `source_system` is `otel`.
+
+An attribute read is `declared`. That includes an `oasa.*` attribute and a configured attribute alias. `identity_type` is the attribute that was actually read. `identity_value` is the value copied into the field. The attribute name has to be a valid identity type: lowercase segments separated by dots, each starting with a letter.
+
+A configured static default is `rule`. `allocation_rule_id` is `attribution.defaults.rule_id`. `identity_type` is `oasa.allocation_rule`. `identity_value` equals `allocation_rule_id`. A default does not replace a field an attribute already set. A configured setting is never `manual`.
 
 ## Migrating from v0.1.0
 

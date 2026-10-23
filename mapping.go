@@ -36,8 +36,11 @@ const (
 
 const (
 	methodDeclared = "declared"
-	methodManual   = "manual"
+	methodRule     = "rule"
 )
+
+// identityTypePattern is the spec's identity_type form: lowercase dotted segments.
+var identityTypePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$`)
 
 // commonAttributionFields are the four OASA fields that carry per-field provenance.
 var commonAttributionFields = map[string]bool{
@@ -45,7 +48,7 @@ var commonAttributionFields = map[string]bool{
 }
 
 // source is one parsed attribute reference, e.g. resource.attributes["service.name"].
-// method is declared or manual for a common attribution field, and empty otherwise.
+// method is declared for a common field read from an attribute, and empty otherwise.
 type source struct {
 	scope  attrScope
 	key    string
@@ -147,7 +150,7 @@ func buildMapping(mf *mappingFile, overrides map[string]string, legacyGenAIAgent
 			continue
 		}
 		if commonAttributionFields[f] {
-			exprs[f] = append(exprs[f], rawSource{expr: expr, method: methodManual})
+			exprs[f] = append(exprs[f], rawSource{expr: expr, method: methodDeclared})
 			continue
 		}
 		exprs[f] = []rawSource{{expr: expr}}
@@ -179,6 +182,9 @@ func buildMapping(mf *mappingFile, overrides map[string]string, legacyGenAIAgent
 				continue
 			}
 			s.method = e.method
+			if s.method == methodDeclared && !identityTypePattern.MatchString(s.key) {
+				errs = append(errs, fmt.Errorf("fields.%s: attribute %q is not a valid identity_type", name, s.key))
+			}
 			fm.sources = append(fm.sources, s)
 		}
 		if len(fm.sources) == 0 {

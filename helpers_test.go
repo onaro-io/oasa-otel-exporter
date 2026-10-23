@@ -36,7 +36,13 @@ func newTestTranslator(t *testing.T, mutate func(*Config)) *translator {
 	if err != nil {
 		t.Fatalf("buildMapping: %v", err)
 	}
-	return &translator{mapping: m, currency: cfg.Currency, tagsFrom: cfg.Attribution.TagsFrom, now: func() time.Time { return fixedNow }}
+	return &translator{
+		mapping:  m,
+		currency: cfg.Currency,
+		tagsFrom: cfg.Attribution.TagsFrom,
+		defaults: cfg.Attribution.Defaults,
+		now:      func() time.Time { return fixedNow },
+	}
 }
 
 var (

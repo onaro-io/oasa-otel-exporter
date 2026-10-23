@@ -7,7 +7,7 @@ Proposed. Not released.
 ### Changed
 - `agent_id` is read from `oasa.agent.id`. `gen_ai.agent.id`, or else `gen_ai.main_agent.id`, is written to `external_identity_ref` with `identity_scheme` `other`. Neither hosted id is copied into `agent_id` or `parent_agent_id`.
 - `cost_center`, `agent_owner`, and `project_id` are read from `oasa.cost_center`, `oasa.agent.owner`, and `oasa.project.id`. An `attribution` setting for one of those fields fills it only when the span left it empty.
-- A set common field carries per-field provenance. An `oasa.*` attribute is `declared`. A configured fallback is `manual`.
+- A set common field carries per-field provenance. An attribute read, including a configured attribute alias, is `declared`, and `identity_type` is the attribute that was read. A configured static default is `rule`, with `allocation_rule_id` and `identity_value` set to that rule id and `identity_type` `oasa.allocation_rule`.
 
 ### Added
 - `attribution.legacy_gen_ai_agent_id`, deprecated and off by default. When true, `gen_ai.agent.id` is copied to `agent_id`, which is the v0.1.0 behavior, and is not copied to `external_identity_ref`.

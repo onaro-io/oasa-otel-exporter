@@ -286,14 +286,45 @@ func TestMappingAttribution(t *testing.T) {
 		t.Errorf("cost_center=%q project_id=%q customer_id=%q", r.CostCenter, r.ProjectID, r.CustomerID)
 	}
 	cc := r.Attribution.CostCenter
-	if cc == nil || cc.Method != "manual" || cc.IdentityType != "oasa.manual" || cc.IdentityValue != "cost.center" || cc.SourceSystem != "otel" {
-		t.Errorf("cost_center fallback attribution = %+v", cc)
+	if cc == nil || cc.Method != "declared" || cc.IdentityType != "cost.center" || cc.IdentityValue != "Customer Success" || cc.SourceSystem != "otel" {
+		t.Errorf("cost_center alias attribution = %+v", cc)
 	}
-	if r.Attribution.ProjectID == nil || r.Attribution.ProjectID.Method != "manual" || r.Attribution.ProjectID.IdentityValue != "project.id" {
-		t.Errorf("project_id fallback attribution = %+v", r.Attribution.ProjectID)
+	if r.Attribution.ProjectID == nil || r.Attribution.ProjectID.Method != "declared" || r.Attribution.ProjectID.IdentityType != "project.id" || r.Attribution.ProjectID.IdentityValue != "proj_support" {
+		t.Errorf("project_id alias attribution = %+v", r.Attribution.ProjectID)
 	}
 	if r.Attribution.AgentID != nil {
 		t.Errorf("customer_id must not create an agent_id provenance entry: %+v", r.Attribution)
+	}
+}
+
+func TestStaticDefaultIsRule(t *testing.T) {
+	tr := newTestTranslator(t, func(c *Config) {
+		c.Attribution.Defaults = AttributionDefaults{
+			RuleID:     "unassigned-cost-center",
+			CostCenter: "cc-unassigned",
+			ProjectID:  "proj-unassigned",
+		}
+	})
+	r := translateOne(t, tr, minimalGenAI, nil)
+	if r.CostCenter != "cc-unassigned" || r.ProjectID != "proj-unassigned" || r.AllocationRuleID != "unassigned-cost-center" {
+		t.Errorf("cost_center=%q project_id=%q allocation_rule_id=%q", r.CostCenter, r.ProjectID, r.AllocationRuleID)
+	}
+	cc := r.Attribution.CostCenter
+	if cc == nil || cc.Method != "rule" || cc.SourceSystem != "otel" || cc.IdentityType != "oasa.allocation_rule" || cc.IdentityValue != "unassigned-cost-center" {
+		t.Errorf("static default attribution = %+v", cc)
+	}
+
+	r = translateOne(t, tr, minimalGenAI, map[string]any{"cost.center": "Customer Success"})
+	if r.CostCenter != "Customer Success" || r.Attribution.CostCenter == nil || r.Attribution.CostCenter.Method != "declared" || r.Attribution.CostCenter.IdentityType != "cost.center" {
+		t.Errorf("alias did not win over the static default: cost_center=%q attribution=%+v", r.CostCenter, r.Attribution.CostCenter)
+	}
+	if r.ProjectID != "proj-unassigned" || r.Attribution.ProjectID == nil || r.Attribution.ProjectID.Method != "rule" || r.AllocationRuleID != "unassigned-cost-center" {
+		t.Errorf("project default = %q attribution=%+v rule=%q", r.ProjectID, r.Attribution.ProjectID, r.AllocationRuleID)
+	}
+
+	r = translateOne(t, tr, map[string]any{"gen_ai.operation.name": "chat", "oasa.cost_center": "cc-4100"}, nil)
+	if r.CostCenter != "cc-4100" || r.Attribution.CostCenter == nil || r.Attribution.CostCenter.Method != "declared" || r.Attribution.CostCenter.IdentityType != "oasa.cost_center" {
+		t.Errorf("oasa attribute did not win over the static default: %+v", r.Attribution.CostCenter)
 	}
 }
 

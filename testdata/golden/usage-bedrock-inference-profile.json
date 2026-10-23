@@ -32,10 +32,10 @@
       "identity_value": "support-agent"
     },
     "cost_center": {
-      "method": "manual",
+      "method": "declared",
       "source_system": "otel",
-      "identity_type": "oasa.manual",
-      "identity_value": "cost.center"
+      "identity_type": "cost.center",
+      "identity_value": "CustomerSuccess"
     }
   }
 }

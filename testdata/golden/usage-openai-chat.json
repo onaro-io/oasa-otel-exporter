@@ -30,16 +30,16 @@
       "identity_value": "agent-support-47"
     },
     "cost_center": {
-      "method": "manual",
+      "method": "declared",
       "source_system": "otel",
-      "identity_type": "oasa.manual",
-      "identity_value": "cost.center"
+      "identity_type": "cost.center",
+      "identity_value": "Customer Success"
     },
     "project_id": {
-      "method": "manual",
+      "method": "declared",
       "source_system": "otel",
-      "identity_type": "oasa.manual",
-      "identity_value": "project.id"
+      "identity_type": "project.id",
+      "identity_value": "proj_support"
     }
   }
 }

@@ -71,17 +71,20 @@ type HTTPConfig struct {
 	_ struct{}
 }
 
-// AttributionConfig maps allocation fields to attributes. Each value is an
-// expression like resource.attributes["cost.center"]. For cost_center,
-// agent_owner, and project_id the expression fills the field only when the
-// span left it empty. For customer_id and environment it replaces the
-// mapping file's sources.
+// AttributionConfig maps allocation fields to attributes or static defaults.
+// A string value is an attribute alias, such as resource.attributes["cost.center"].
+// For cost_center, agent_owner, and project_id that alias fills the field only
+// when the span left it empty, and the fill is declared. For customer_id and
+// environment it replaces the mapping file's sources. Defaults are static
+// values applied after attributes, recorded as rule.
 type AttributionConfig struct {
 	CostCenter  string `mapstructure:"cost_center"`
 	AgentOwner  string `mapstructure:"agent_owner"`
 	ProjectID   string `mapstructure:"project_id"`
 	CustomerID  string `mapstructure:"customer_id"`
 	Environment string `mapstructure:"environment"`
+	// Defaults are static values for common fields the span and the aliases left empty.
+	Defaults AttributionDefaults `mapstructure:"defaults"`
 	// LegacyGenAIAgentID is deprecated and off by default. When true,
 	// gen_ai.agent.id is copied to agent_id, which is the v0.1.0 behavior,
 	// and is not copied to external_identity_ref.
@@ -90,6 +93,47 @@ type AttributionConfig struct {
 	TagsFrom []string `mapstructure:"tags_from"`
 
 	_ struct{}
+}
+
+// AttributionDefaults holds static values for common fields. RuleID is the
+// allocation_rule_id recorded when any default fills a field.
+type AttributionDefaults struct {
+	RuleID     string `mapstructure:"rule_id"`
+	AgentID    string `mapstructure:"agent_id"`
+	AgentOwner string `mapstructure:"agent_owner"`
+	CostCenter string `mapstructure:"cost_center"`
+	ProjectID  string `mapstructure:"project_id"`
+
+	_ struct{}
+}
+
+func (d AttributionDefaults) values() map[string]string {
+	return map[string]string{
+		"agent_id":    strings.TrimSpace(d.AgentID),
+		"agent_owner": strings.TrimSpace(d.AgentOwner),
+		"cost_center": strings.TrimSpace(d.CostCenter),
+		"project_id":  strings.TrimSpace(d.ProjectID),
+	}
+}
+
+func (d AttributionDefaults) validate() error {
+	n := 0
+	for _, v := range d.values() {
+		if v != "" {
+			n++
+		}
+	}
+	ruleID := strings.TrimSpace(d.RuleID)
+	if n == 0 && ruleID == "" {
+		return nil
+	}
+	if ruleID == "" {
+		return errors.New("attribution.defaults.rule_id is required when a static default is set")
+	}
+	if n == 0 {
+		return errors.New("attribution.defaults.rule_id is set but no default value is configured")
+	}
+	return nil
 }
 
 func (a AttributionConfig) overrides() map[string]string {
@@ -132,6 +176,9 @@ func (cfg *Config) Validate() error {
 		if strings.TrimSpace(k) == "" {
 			errs = append(errs, fmt.Errorf("attribution.tags_from[%d] is empty", i))
 		}
+	}
+	if err := cfg.Attribution.Defaults.validate(); err != nil {
+		errs = append(errs, err)
 	}
 	if _, err := cfg.buildMapping(); err != nil {
 		errs = append(errs, err)
