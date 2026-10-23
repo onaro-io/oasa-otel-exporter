@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  collectors:
+    name: ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install ocb
+        run: go install go.opentelemetry.io/collector/cmd/builder@v0.162.0
+      - name: Build the collector
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: builder --config builder-config.yaml
+      - name: Package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          ver="${GITHUB_REF_NAME#v}"
+          name="otelcol-oasa_${ver}_${GOOS}_${GOARCH}"
+          mkdir -p "${name}/examples"
+          cp LICENSE README.md "${name}/"
+          cp examples/config.yaml examples/config-http.yaml examples/trace.json "${name}/examples/"
+          if [ "${GOOS}" = "windows" ]; then
+            if [ -f _build/otelcol-oasa.exe ]; then
+              cp _build/otelcol-oasa.exe "${name}/otelcol-oasa.exe"
+            else
+              cp _build/otelcol-oasa "${name}/otelcol-oasa.exe"
+            fi
+            zip -r "${name}.zip" "${name}"
+          else
+            cp _build/otelcol-oasa "${name}/otelcol-oasa"
+            tar -czf "${name}.tar.gz" "${name}"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: otelcol-oasa-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: otelcol-oasa_*.*
+
+  publish:
+    needs: collectors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum otelcol-oasa_* > checksums.txt
+          gh release upload "${GITHUB_REF_NAME}" otelcol-oasa_* checksums.txt --repo "${GITHUB_REPOSITORY}" --clobber

@@ -61,7 +61,7 @@ To use the exporter in your own collector build, add it to your `ocb` manifest:
 
 ```yaml
 exporters:
-  - gomod: github.com/onaro-io/oasa-otel-exporter v0.1.0
+  - gomod: github.com/onaro-io/oasa-otel-exporter v0.2.0
     name: oasaexporter
 ```
 
@@ -169,7 +169,7 @@ A configured static default is `rule`. `allocation_rule_id` is `attribution.defa
 
 ## Migrating from v0.1.0
 
-v0.2.0 is proposed and is not released. v0.1.0 wrote `gen_ai.agent.id` into `agent_id` and did not write `external_identity_ref` or `attribution`. That output remains valid OASA 0.1.2. It is not the 0.1.3 mapping.
+v0.2.0 reads `agent_id` from `oasa.agent.id`. v0.1.0 wrote `gen_ai.agent.id` into `agent_id` and did not write `external_identity_ref` or `attribution`. That output remains valid OASA 0.1.2. It is not the 0.1.3 mapping.
 
 To keep the v0.1.0 agent id behavior while you move application ids onto `oasa.agent.id`, set the deprecated option:
 
