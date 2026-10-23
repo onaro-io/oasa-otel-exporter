@@ -53,6 +53,42 @@ func (d *Decimal) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// AttributionEntry is the provenance of one common attribution field.
+type AttributionEntry struct {
+	Method        string `json:"method"`
+	SourceSystem  string `json:"source_system"`
+	IdentityType  string `json:"identity_type"`
+	IdentityValue string `json:"identity_value"`
+}
+
+// Attribution holds per-field provenance for agent_id, agent_owner,
+// cost_center, and project_id. Empty when none of those fields was set
+// by a source this package records.
+type Attribution struct {
+	AgentID    *AttributionEntry `json:"agent_id,omitempty"`
+	AgentOwner *AttributionEntry `json:"agent_owner,omitempty"`
+	CostCenter *AttributionEntry `json:"cost_center,omitempty"`
+	ProjectID  *AttributionEntry `json:"project_id,omitempty"`
+}
+
+// SetAttribution records provenance for one common field.
+func (r *Record) SetAttribution(field string, e AttributionEntry) {
+	if r.Attribution == nil {
+		r.Attribution = &Attribution{}
+	}
+	entry := e
+	switch field {
+	case "agent_id":
+		r.Attribution.AgentID = &entry
+	case "agent_owner":
+		r.Attribution.AgentOwner = &entry
+	case "cost_center":
+		r.Attribution.CostCenter = &entry
+	case "project_id":
+		r.Attribution.ProjectID = &entry
+	}
+}
+
 // Record is one OASA 0.1 record. Envelope fields are always serialized;
 // every other field is omitted when empty.
 type Record struct {
@@ -119,6 +155,7 @@ type Record struct {
 	AllocationMethod string            `json:"allocation_method,omitempty"`
 	AllocationRuleID string            `json:"allocation_rule_id,omitempty"`
 	SplitFraction    Decimal           `json:"split_fraction,omitempty"`
+	Attribution      *Attribution      `json:"attribution,omitempty"`
 
 	// Group 7 — Settlement join
 	SettlementRail       string  `json:"settlement_rail,omitempty"`

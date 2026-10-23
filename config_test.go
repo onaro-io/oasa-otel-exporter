@@ -117,7 +117,10 @@ func TestConfigValidateErrors(t *testing.T) {
 		"http zero batch":      {func(c *Config) { c.Sink = "http"; c.HTTP.ClientConfig.Endpoint = "http://x"; c.HTTP.MaxBatchSize = 0 }, "max_batch_size must be positive"},
 		"empty currency":       {func(c *Config) { c.Currency = " " }, "currency must not be empty"},
 		"bad attribution expr": {func(c *Config) { c.Attribution.CostCenter = "cost.center" }, "fields.cost_center"},
+		"alias identity type":  {func(c *Config) { c.Attribution.CostCenter = `resource.attributes["CostCenter"]` }, "not a valid identity_type"},
 		"empty tag key":        {func(c *Config) { c.Attribution.TagsFrom = []string{""} }, "tags_from[0] is empty"},
+		"default without rule": {func(c *Config) { c.Attribution.Defaults.CostCenter = "cc-unassigned" }, "rule_id is required"},
+		"rule without default": {func(c *Config) { c.Attribution.Defaults.RuleID = "unused" }, "no default value"},
 		"missing mapping file": {func(c *Config) { c.MappingFile = filepath.Join(t.TempDir(), "nope.yaml") }, "reading mapping file"},
 	}
 	for name, tc := range cases {

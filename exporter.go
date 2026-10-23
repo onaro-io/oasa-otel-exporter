@@ -47,6 +47,7 @@ func newOASAExporter(cfg *Config, set exporter.Settings) (*oasaExporter, error) 
 			mapping:  m,
 			currency: cfg.Currency,
 			tagsFrom: cfg.Attribution.TagsFrom,
+			defaults: cfg.Attribution.Defaults,
 			now:      time.Now,
 		},
 		sink: s,

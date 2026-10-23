@@ -9,6 +9,8 @@
   "currency": "USD",
   "agent_id": "agent-support-47",
   "agent_name": "Support Triage",
+  "identity_scheme": "other",
+  "external_identity_ref": "asst_support47",
   "session_id": "sess-2f91",
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "span_id": "b7ad6b7169203331",
@@ -17,5 +19,25 @@
   "request_count": 1,
   "cost_center": "Customer Success",
   "project_id": "proj_support",
-  "environment": "prod"
+  "environment": "prod",
+  "attribution": {
+    "agent_id": {
+      "method": "declared",
+      "source_system": "otel",
+      "identity_type": "oasa.agent.id",
+      "identity_value": "agent-support-47"
+    },
+    "cost_center": {
+      "method": "declared",
+      "source_system": "otel",
+      "identity_type": "cost.center",
+      "identity_value": "Customer Success"
+    },
+    "project_id": {
+      "method": "declared",
+      "source_system": "otel",
+      "identity_type": "project.id",
+      "identity_value": "proj_support"
+    }
+  }
 }

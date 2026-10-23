@@ -21,8 +21,7 @@ integration: builder
 	go test -tags integration -run TestCollectorEndToEnd -count=1 -v .
 
 sync-spec:
-	cp $(SPEC_DIR)/examples/usage-*.json testdata/golden/
-	cp $(SPEC_DIR)/schema/oasa-record.schema.json testdata/schema/
+	cp $(SPEC_DIR)/schema/0.1.3/oasa-record.schema.json testdata/schema/oasa-record.schema.json
 
 clean:
 	rm -rf _build

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oasaspec.org/schema/0.1/oasa-record.schema.json",
+  "$id": "https://oasaspec.org/schema/0.1.3/oasa-record.schema.json",
   "title": "OASA record (schema_version 0.1.x)",
   "description": "One Open Agent Spend Attribution record. Envelope fields are required; every other group is optional. Generated from SPEC.md by scripts/generate-schema.mjs; do not edit by hand.",
   "type": "object",
@@ -23,14 +23,15 @@
       "minLength": 1
     },
     "record_type": {
-      "description": "One row = one event class.",
+      "description": "One row = one event class. mapping binds a native identifier to common attribution fields for a validity window.",
       "type": "string",
       "enum": [
         "usage",
         "charge",
         "settlement",
         "allocation",
-        "outcome"
+        "outcome",
+        "mapping"
       ]
     },
     "schema_version": {
@@ -294,6 +295,61 @@
       "minimum": 0,
       "maximum": 1
     },
+    "attribution": {
+      "description": "Per-field provenance for agent_id, agent_owner, cost_center, and project_id. Present only alongside at least one of those fields. Each entry has method, source_system, identity_type, and identity_value. See Attribution.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "agent_id": {
+          "$ref": "#/$defs/attributionEntry"
+        },
+        "agent_owner": {
+          "$ref": "#/$defs/attributionEntry"
+        },
+        "cost_center": {
+          "$ref": "#/$defs/attributionEntry"
+        },
+        "project_id": {
+          "$ref": "#/$defs/attributionEntry"
+        }
+      }
+    },
+    "attribution_unattributed_reason": {
+      "description": "Why none of the four common attribution fields is set. MUST be absent when any of them is set. A producer that attributes a record and sets none of the four MUST set this. A record MAY omit it.",
+      "type": "string",
+      "enum": [
+        "no_identity",
+        "identity_not_mapped",
+        "tag_missing",
+        "seat_without_owner",
+        "not_on_bill",
+        "mapping_conflict"
+      ]
+    },
+    "attribution_identity_type": {
+      "description": "On a mapping record, the native identifier name. MUST be absent on every other record type.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+    },
+    "attribution_identity_value": {
+      "description": "On a mapping record, the native identifier value. MUST be absent on every other record type.",
+      "type": "string",
+      "minLength": 1
+    },
+    "valid_from": {
+      "description": "On a mapping record, inclusive start of the window. MUST be absent on every other record type.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-]00:00)$"
+    },
+    "valid_to": {
+      "description": "On a mapping record, exclusive end of the window. Absent means still in force. MUST be absent on every other record type.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-]00:00)$"
+    },
     "settlement_rail": {
       "description": "How money moved.",
       "type": "string",
@@ -378,5 +434,423 @@
       "description": "Pointer to a business metric definition.",
       "type": "string"
     }
-  }
+  },
+  "$defs": {
+    "attributionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "source_system",
+        "identity_type",
+        "identity_value"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "declared",
+            "manual",
+            "mapped",
+            "inherited",
+            "rule"
+          ],
+          "description": "How this field was set. declared, manual, mapped, inherited, or rule."
+        },
+        "source_system": {
+          "type": "string",
+          "minLength": 1,
+          "description": "System that minted the native identity for this field."
+        },
+        "identity_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$",
+          "description": "Native identifier name. Lowercase dotted segments, each starting with a letter."
+        },
+        "identity_value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Native identifier value. For a convention tag or label, this is the tag key."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "record_type"
+        ],
+        "properties": {
+          "record_type": {
+            "const": "mapping"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "attribution"
+              ],
+              "properties": {
+                "attribution": {}
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "attribution_unattributed_reason"
+              ],
+              "properties": {
+                "attribution_unattributed_reason": {}
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "record_type"
+        ],
+        "properties": {
+          "record_type": {
+            "not": {
+              "const": "mapping"
+            }
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "attribution_identity_type"
+              ],
+              "properties": {
+                "attribution_identity_type": {}
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "attribution_identity_value"
+              ],
+              "properties": {
+                "attribution_identity_value": {}
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "valid_from"
+              ],
+              "properties": {
+                "valid_from": {}
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "valid_to"
+              ],
+              "properties": {
+                "valid_to": {}
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "agent_id"
+            ],
+            "properties": {
+              "agent_id": {}
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "agent_owner"
+            ],
+            "properties": {
+              "agent_owner": {}
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "cost_center"
+            ],
+            "properties": {
+              "cost_center": {}
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "project_id"
+            ],
+            "properties": {
+              "project_id": {}
+            }
+          }
+        ]
+      },
+      "then": {
+        "not": {
+          "type": "object",
+          "required": [
+            "attribution_unattributed_reason"
+          ],
+          "properties": {
+            "attribution_unattributed_reason": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "agent_id"
+            ],
+            "properties": {
+              "agent_id": {}
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "agent_id"
+        ],
+        "properties": {
+          "agent_id": {}
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution",
+          "agent_id"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object"
+          },
+          "agent_id": {}
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "agent_id"
+            ],
+            "properties": {
+              "agent_id": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "agent_owner"
+            ],
+            "properties": {
+              "agent_owner": {}
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "agent_owner"
+        ],
+        "properties": {
+          "agent_owner": {}
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution",
+          "agent_owner"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object"
+          },
+          "agent_owner": {}
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "agent_owner"
+            ],
+            "properties": {
+              "agent_owner": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "cost_center"
+            ],
+            "properties": {
+              "cost_center": {}
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "cost_center"
+        ],
+        "properties": {
+          "cost_center": {}
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution",
+          "cost_center"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object"
+          },
+          "cost_center": {}
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "cost_center"
+            ],
+            "properties": {
+              "cost_center": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "project_id"
+            ],
+            "properties": {
+              "project_id": {}
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "properties": {
+          "project_id": {}
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": [
+          "attribution",
+          "project_id"
+        ],
+        "properties": {
+          "attribution": {
+            "type": "object"
+          },
+          "project_id": {}
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "attribution": {
+            "type": "object",
+            "required": [
+              "project_id"
+            ],
+            "properties": {
+              "project_id": {}
+            }
+          }
+        }
+      }
+    }
+  ]
 }

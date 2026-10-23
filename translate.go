@@ -22,6 +22,7 @@ type translator struct {
 	mapping  *mapping
 	currency string
 	tagsFrom []string
+	defaults AttributionDefaults
 	now      func() time.Time
 }
 
@@ -83,7 +84,7 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 
 	spanAttrs := span.Attributes()
 	for _, fm := range t.mapping.fields {
-		v, ok := firstValue(fm.sources, spanAttrs, resAttrs)
+		v, src, ok := firstValue(fm.sources, spanAttrs, resAttrs)
 		if !ok {
 			continue
 		}
@@ -106,8 +107,13 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 				continue
 			}
 			_ = r.SetString(fm.field, s)
+			noteAttribution(r, fm.field, src, s)
 		}
 	}
+	if r.ExternalIdentityRef != "" {
+		r.IdentityScheme = "other"
+	}
+	t.applyStaticDefaults(r)
 
 	if r.ToolName != "" && t.mapping.toolCallOperation != "" {
 		r.Operation = t.mapping.toolCallOperation
@@ -131,17 +137,64 @@ func (t *translator) spanToRecord(span ptrace.Span, resAttrs pcommon.Map, record
 	return r
 }
 
-func firstValue(sources []source, spanAttrs, resAttrs pcommon.Map) (pcommon.Value, bool) {
+const (
+	provenanceSystem = "otel"
+	ruleIdentityType = "oasa.allocation_rule"
+)
+
+// noteAttribution writes declared provenance for a common field read from an
+// attribute. identity_type is the attribute that was read. identity_value is
+// the value copied into the field.
+func noteAttribution(r *record.Record, field string, src source, value string) {
+	if src.method == "" || value == "" {
+		return
+	}
+	r.SetAttribution(field, record.AttributionEntry{
+		Method:        src.method,
+		SourceSystem:  provenanceSystem,
+		IdentityType:  src.key,
+		IdentityValue: value,
+	})
+}
+
+// applyStaticDefaults fills common fields that are still empty from
+// attribution.defaults. Each fill is method rule. allocation_rule_id and
+// identity_value are the configured rule id. identity_type is oasa.allocation_rule.
+func (t *translator) applyStaticDefaults(r *record.Record) {
+	ruleID := strings.TrimSpace(t.defaults.RuleID)
+	if ruleID == "" {
+		return
+	}
+	applied := false
+	for field, value := range t.defaults.values() {
+		if value == "" || r.GetString(field) != "" {
+			continue
+		}
+		_ = r.SetString(field, value)
+		r.SetAttribution(field, record.AttributionEntry{
+			Method:        methodRule,
+			SourceSystem:  provenanceSystem,
+			IdentityType:  ruleIdentityType,
+			IdentityValue: ruleID,
+		})
+		applied = true
+	}
+	if applied {
+		r.AllocationRuleID = ruleID
+	}
+}
+
+func firstValue(sources []source, spanAttrs, resAttrs pcommon.Map) (pcommon.Value, source, bool) {
 	for _, s := range sources {
 		attrs := spanAttrs
 		if s.scope == scopeResource {
 			attrs = resAttrs
 		}
 		if v, ok := attrs.Get(s.key); ok && v.Type() != pcommon.ValueTypeEmpty {
-			return v, true
+			return v, s, true
 		}
 	}
-	return pcommon.Value{}, false
+	return pcommon.Value{}, source{}, false
 }
 
 func asInt(v pcommon.Value) (int64, bool) {

@@ -34,11 +34,26 @@ const (
 	scopeResource
 )
 
+const (
+	methodDeclared = "declared"
+	methodRule     = "rule"
+)
+
+// identityTypePattern is the spec's identity_type form: lowercase dotted segments.
+var identityTypePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$`)
+
+// commonAttributionFields are the four OASA fields that carry per-field provenance.
+var commonAttributionFields = map[string]bool{
+	"agent_id": true, "agent_owner": true, "cost_center": true, "project_id": true,
+}
+
 // source is one parsed attribute reference, e.g. resource.attributes["service.name"].
+// method is declared for a common field read from an attribute, and empty otherwise.
 type source struct {
-	scope attrScope
-	key   string
-	text  string
+	scope  attrScope
+	key    string
+	text   string
+	method string
 }
 
 var sourcePattern = regexp.MustCompile(`^(span\.|resource\.)?attributes\["([^"]+)"\]$`)
@@ -99,9 +114,18 @@ func loadMapping(path string) (*mappingFile, error) {
 	return &mf, nil
 }
 
-// buildMapping validates a mapping file and applies attribution overrides,
-// which replace the file's sources for the fields they name.
-func buildMapping(mf *mappingFile, overrides map[string]string) (*mapping, error) {
+// rawSource is one mapping expression plus the provenance method it records.
+type rawSource struct {
+	expr   string
+	method string
+}
+
+// buildMapping validates a mapping file and applies attribution overrides.
+// For agent_id, agent_owner, cost_center, and project_id an override is a
+// fallback: it does not replace a source the file already lists. For every
+// other field an override replaces the file's sources. legacyGenAIAgentID
+// restores the v0.1.0 agent_id source and drops the external-identity sources.
+func buildMapping(mf *mappingFile, overrides map[string]string, legacyGenAIAgentID bool) (*mapping, error) {
 	var errs []error
 	m := &mapping{genAIPrefix: mf.GenAIAttributePrefix, toolCallOperation: mf.ToolCallOperation}
 	if m.genAIPrefix == "" {
@@ -111,14 +135,32 @@ func buildMapping(mf *mappingFile, overrides map[string]string) (*mapping, error
 		errs = append(errs, fmt.Errorf("tool_call_operation %q is not an OASA operation", m.toolCallOperation))
 	}
 
-	exprs := map[string][]string{}
+	exprs := map[string][]rawSource{}
 	for f, list := range mf.Fields {
-		exprs[f] = list
+		method := ""
+		if commonAttributionFields[f] {
+			method = methodDeclared
+		}
+		for _, e := range list {
+			exprs[f] = append(exprs[f], rawSource{expr: e, method: method})
+		}
 	}
 	for f, expr := range overrides {
-		if expr != "" {
-			exprs[f] = []string{expr}
+		if expr == "" {
+			continue
 		}
+		if commonAttributionFields[f] {
+			exprs[f] = append(exprs[f], rawSource{expr: expr, method: methodDeclared})
+			continue
+		}
+		exprs[f] = []rawSource{{expr: expr}}
+	}
+	if legacyGenAIAgentID {
+		exprs["agent_id"] = []rawSource{{
+			expr:   `span.attributes["gen_ai.agent.id"]`,
+			method: methodDeclared,
+		}}
+		delete(exprs, "external_identity_ref")
 	}
 
 	for _, name := range record.FieldNames() {
@@ -134,10 +176,14 @@ func buildMapping(mf *mappingFile, overrides map[string]string) (*mapping, error
 		kind, _ := record.Kind(name)
 		fm := fieldMapping{field: name, kind: kind}
 		for _, e := range list {
-			s, err := parseSource(e)
+			s, err := parseSource(e.expr)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("fields.%s: %w", name, err))
 				continue
+			}
+			s.method = e.method
+			if s.method == methodDeclared && !identityTypePattern.MatchString(s.key) {
+				errs = append(errs, fmt.Errorf("fields.%s: attribute %q is not a valid identity_type", name, s.key))
 			}
 			fm.sources = append(fm.sources, s)
 		}
